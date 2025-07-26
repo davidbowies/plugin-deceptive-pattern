@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Deceptive Pattern Detector</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 12px; }
+    .card { border: 2px solid #a259ff; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
+    .primary { background: #8000cc; color: #fff; }
+    .secondary { background: #d1a8f6; color: #333; border: 2px solid #8000cc; }
+    .scroll { border: 1px solid #aaa; border-radius: 8px; padding: 8px; max-height: 120px; overflow: auto; }
+    #fullscreen { float: right; background: none; font-size: 18px; cursor: pointer; border: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>Step 1: Select frames</h3>
+    <p id="frame-count">0 frames detected.</p>
+  </div>
+  <div class="card">
+    <h3>Step 2: Review</h3>
+    <ul id="frame-list"></ul>
+  </div>
+  <div class="card">
+    <h3>
+      Step 3: Analysis
+      <button id="fullscreen">⤢</button>
+    </h3>
+    <div id="output" class="scroll"><em>No analysis started…</em></div>
+  </div>
+  <div style="display: flex; justify-content: space-between;">
+    <button id="reset" class="secondary">Reset</button>
+    <button id="analyze" class="primary">Analyse</button>
+  </div>
+
+  <!-- verify HTML is loading -->
+  <script>
+    console.log("🔥 inline HTML loaded");
+  </script>
+
+  <!-- all of ui.js inlined here -->
+  <script>
+    console.log("✅ ui.js loaded");
+
+    const frameCount = document.getElementById("frame-count");
+    const frameList  = document.getElementById("frame-list");
+    const output     = document.getElementById("output");
+    const btnAnalyse = document.getElementById("analyze");
+    const btnReset   = document.getElementById("reset");
+    const btnFull    = document.getElementById("fullscreen");
+    let isFull = false;
+
+    btnAnalyse.onclick = () => {
+      console.log("🔍 Analyse clicked");
+      parent.postMessage({ pluginMessage: { type: "get-selection" } }, "*");
+    };
+
+    btnReset.onclick = () => {
+      frameCount.textContent = "0 frames detected.";
+      frameList.innerHTML = "";
+      output.innerHTML = "<em>No analysis started…</em>";
+      isFull = false;
+      output.style.maxHeight = "120px";
+    };
+
+    btnFull.onclick = () => {
+      isFull = !isFull;
+      output.style.maxHeight = isFull ? "600px" : "120px";
+      output.scrollTop = 0;
+    };
+
+    onmessage = (evt) => {
+      const msg = evt.data.pluginMessage;
+      console.log("👈 ui got:", msg);
+
+      if (msg.type === "selection-result") {
+        // Step 1 & 2 updates
+        frameCount.textContent = `${msg.frames.length} frame${msg.frames.length === 1 ? "" : "s"} detected.`;
+        frameList.innerHTML = msg.frames.map(f => `<li>${f}</li>`).join("");
+        output.innerHTML = "<em>Analyzing…</em>";
+
+        // Send analysis request to controller (code.js)
+        parent.postMessage({ pluginMessage: {
+          type: "analyze-openai",
+          frames: msg.frames,
+          textBlocks: msg.textBlocks
+        } }, "*");
+      }
+
+      if (msg.type === "analysis-result") {
+        output.innerHTML = msg.result.replace(/\n/g, "<br>");
+      }
+    };
+  </script>
+</body>
+</html>

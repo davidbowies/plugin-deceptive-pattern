@@ -1,0 +1,7 @@
+# ignore secrets
+.env
+/server/.env
+
+# ignore build/ deps
+node_modules/
+dist/
